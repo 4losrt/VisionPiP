@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VisionPiP Settings</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(255, 255, 255, 0.03);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent-gradient: linear-gradient(135deg, #6366f1, #a855f7);
+      --accent-glow: rgba(99, 102, 241, 0.25);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --radius: 12px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 13px;
+      padding-bottom: 14px;
+      user-select: none;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+    }
+
+    .header-icon {
+      width: 34px;
+      height: 34px;
+      background: var(--accent-gradient);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px var(--accent-glow);
+      flex-shrink: 0;
+    }
+
+    .header-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #ffffff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .header-text h1 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .header-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 12px 16px 4px;
+      padding: 10px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      font-size: 12px;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4b5563;
+      transition: all 0.3s ease;
+    }
+
+    .status-dot.active {
+      background: #10b981;
+      box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+    }
+
+    /* Switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #374151;
+      transition: .25s ease;
+      border-radius: 20px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #ffffff;
+      transition: .25s ease;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background: var(--accent-gradient);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+
+    /* Sections */
+    .section {
+      padding: 12px 16px 0;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    /* Controls */
+    .control {
+      margin-bottom: 12px;
+    }
+
+    .control-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: #e5e7eb;
+    }
+
+    .control-value {
+      font-size: 11.5px;
+      color: #a855f7;
+      font-weight: 600;
+    }
+
+    /* Inputs */
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 4px;
+      background: #1f2937;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #8b5cf6;
+      box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 14px;
+    }
+
+    select:focus {
+      border-color: #6366f1;
+    }
+
+    /* Colors */
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+    }
+
+    input[type="color"] {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+      flex-shrink: 0;
+    }
+
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    input[type="color"]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.2); border-radius: 5px; }
+
+    .color-label {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Position Toggle */
+    .toggle-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-btn.active {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: #6366f1;
+      color: #a5b4fc;
+    }
+
+    /* Preview Box */
+    .preview {
+      margin: 14px 16px 4px;
+      background: #030712;
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      height: 72px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.12), transparent 70%);
+    }
+
+    #preview-text {
+      position: relative;
+      z-index: 1;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    /* Footer */
+    .footer {
+      padding: 10px 16px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .reset-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .reset-btn:hover {
+      border-color: var(--text);
+      color: var(--text);
+    }
+
+    .save-indicator {
+      font-size: 11px;
+      color: #10b981;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .save-indicator.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24">
+        <rect x="2" y="3" width="20" height="14" rx="3" />
+        <rect x="11" y="9" width="9" height="7" rx="1.5" fill="rgba(255,255,255,0.2)" />
+        <path d="M6 8h4M6 11h3" />
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>VisionPiP</h1>
+      <p>YouTube Floating Subtitles</p>
+    </div>
+  </div>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-left">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">PiP not active</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="pip-toggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- Typography -->
+  <div class="section">
+    <div class="section-title">Typography</div>
+
+    <div class="control">
+      <div class="control-label">
+        <span>Font Size</span>
+        <span class="control-value" id="font-size-val">16px</span>
+      </div>
+      <input type="range" id="font-size" min="10" max="32" value="16" step="1" />
+    </div>
+
+    <div class="control">
+      <div class="control-label"><span>Font Family</span></div>
+      <select id="font-family">
+        <option value="Trebuchet MS">Trebuchet MS (Default)</option>
+        <option value="Arial">Arial</option>
+        <option value="Georgia">Georgia (Serif)</option>
+        <option value="Verdana">Verdana</option>
+        <option value="Courier New">Courier New (Mono)</option>
+        <option value="Impact">Impact (Bold)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Appearance -->
+  <div class="section">
+    <div class="section-title">Appearance</div>
+
+    <div class="control">
+      <div class="color-row">
+        <input type="color" id="text-color" value="#ffffff" />
+        <span class="color-label">Text Color</span>
+      </div>
+    </div>
+
+    <div class="control">
+      <div class="control-label">
+        <span>Background Opacity</span>
+        <span class="control-value" id="bg-opacity-val">75%</span>
+      </div>
+      <input type="range" id="bg-opacity" min="0" max="100" value="75" step="5" />
+    </div>
+  </div>
+
+  <!-- Position -->
+  <div class="section">
+    <div class="section-title">Position</div>
+    <div class="toggle-group">
+      <button class="toggle-btn active" data-pos="bottom">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+        Bottom
+      </button>
+      <button class="toggle-btn" data-pos="top">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Top
+      </button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div class="preview">
+    <div id="preview-text">VisionPiP Subtitle Preview</div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <button class="reset-btn" id="reset-btn">Reset</button>
+    <span class="save-indicator" id="save-indicator">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+      Saved
+    </span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
