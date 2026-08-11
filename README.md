@@ -6,6 +6,10 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 
 ---
 
+## [📥 Download Latest VisionPiP.crx](https://github.com/4losrt/VisionPiP/releases/latest/download/VisionPiP.crx)
+
+---
+
 ## ✨ Features
 
 - 🎬 **Document Picture-in-Picture API**: Renders full video, subtitles, and interactive controls in an independent floating window (Chrome 116+ required).
