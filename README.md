@@ -1,5 +1,7 @@
 # VisionPiP - YouTube Floating Subtitles
 
+**繁體中文版：** [README.zh-TW.md](README.zh-TW.md)
+
 > Next-generation Picture-in-Picture (PiP) floating subtitles for YouTube with real-time bilingual rendering and ultra-fast performance.
 
 VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **Document Picture-in-Picture API** to display floating YouTube videos with synchronized subtitles in a standalone, OS-level window. Custom-built and optimized for displaying bilingual subtitles seamlessly when used alongside [KISS Translator](https://github.com/fishjar/kiss-translator) as well as native YouTube CC tracks.
