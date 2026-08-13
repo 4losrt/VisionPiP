@@ -13,7 +13,9 @@
   let controlsInterval = null;
   let captionData      = [];
   let activeTrack      = null;
+  let activeTrackKey   = '';
   let allTracks        = [];
+  let subtitleRevision = 0;
   let isStreamMode     = false;
   let subtitlesEnabled = true;
 
@@ -68,7 +70,9 @@
 
   function handlePageNavigation() {
     cachedVideo = null;
-    captionData = []; activeTrack = null; allTracks = [];
+    captionData = []; activeTrack = null; activeTrackKey = ''; allTracks = [];
+    subtitleRevision += 1;
+    if (pipSubEl) pipSubEl.innerHTML = '';
     
     setTimeout(() => {
       init();
@@ -118,32 +122,138 @@
     player.appendChild(btn);
   }
 
-  // ── Caption Track Loading (Fallback) ──────────────────────────────────────
+  // ── Caption Track Loading ───────────────────────────────────────────────────
+  // KISS may intentionally produce no DOM subtitle when its target language is
+  // already the same as YouTube's selected caption language. In that case we
+  // follow YouTube's current native caption track instead of guessing a language.
+  function getPlayerResponse() {
+    try {
+      const currentVideoId = new URL(location.href).searchParams.get('v');
+      const candidates = [];
+      const addCandidate = (candidate) => {
+        if (candidate && !candidates.includes(candidate)) candidates.push(candidate);
+      };
+
+      addCandidate(window.ytInitialPlayerResponse);
+
+      // Content scripts run in an isolated world, so page globals may not be
+      // visible. The same response is also present in this DOM JSON script.
+      const responseScript = document.getElementById('ytInitialPlayerResponse');
+      if (responseScript?.textContent) addCandidate(JSON.parse(responseScript.textContent));
+
+      const raw = window.ytplayer?.config?.args?.player_response;
+      if (raw) addCandidate(typeof raw === 'string' ? JSON.parse(raw) : raw);
+
+      const isCurrentVideo = (response) => {
+        const responseVideoId = response?.videoDetails?.videoId;
+        return !currentVideoId || !responseVideoId || responseVideoId === currentVideoId;
+      };
+
+      return candidates.find(response => isCurrentVideo(response) && response?.captions)
+        || candidates.find(response => response?.captions)
+        || candidates.find(isCurrentVideo)
+        || null;
+    } catch (e) {}
+    return null;
+  }
+
+  function getNativeCaptionTrack(tracks, playerResponse) {
+    const player = document.querySelector('#movie_player, .html5-video-player');
+    let selectedTrack = null;
+
+    // YouTube exposes the currently selected CC track through the player API.
+    // This is the most accurate source when the user selected zh-Hant, zh-TW,
+    // or another translated/native track in YouTube's own subtitle menu.
+    try {
+      selectedTrack = player?.getOption?.('captions', 'track') || null;
+    } catch (e) {}
+
+    const normalizeLanguage = (languageCode) => {
+      const code = String(languageCode || '').toLowerCase().replace('_', '-');
+      if (['zh-hant', 'zh-tw', 'zh-hk', 'zh-mo'].includes(code)) return 'zh-hant';
+      if (['zh-hans', 'zh-cn', 'zh-sg'].includes(code)) return 'zh-hans';
+      return code;
+    };
+
+    const sameTrack = (track, candidate) => {
+      if (!track || !candidate) return false;
+      return (candidate.vssId && track.vssId === candidate.vssId)
+        || (candidate.languageCode && normalizeLanguage(track.languageCode) === normalizeLanguage(candidate.languageCode)
+          && (candidate.kind === undefined || track.kind === candidate.kind));
+    };
+
+    if (selectedTrack) {
+      const matched = tracks.find(track => sameTrack(track, selectedTrack));
+      if (matched) return matched;
+    }
+
+    // If YouTube has not exposed a selected track yet, prefer the video's
+    // original audio language and then a non-ASR track before using any track.
+    const originalLanguage = playerResponse?.videoDetails?.defaultAudioLanguage;
+    if (originalLanguage) {
+      const original = tracks.find(track =>
+        normalizeLanguage(track.languageCode) === normalizeLanguage(originalLanguage)
+        && track.kind !== 'asr'
+      ) || tracks.find(track =>
+        normalizeLanguage(track.languageCode) === normalizeLanguage(originalLanguage)
+      );
+      if (original) return original;
+    }
+
+    // Keep the fallback language preference aligned with the project's
+    // Chinese/English use case instead of the previous language preference.
+    const preferredLanguages = ['zh-hant', 'zh-tw', 'zh-hk', 'zh-mo', 'zh', 'en'];
+    for (const preferredLanguage of preferredLanguages) {
+      const preferredTrack = tracks.find(track =>
+        normalizeLanguage(track.languageCode) === preferredLanguage
+        && track.kind !== 'asr'
+      ) || tracks.find(track =>
+        normalizeLanguage(track.languageCode) === preferredLanguage
+      );
+      if (preferredTrack) return preferredTrack;
+    }
+
+    return tracks.find(track => track.kind !== 'asr') || tracks[0] || null;
+  }
+
   function loadCaptionTracks() {
     try {
-      const pr = window.ytInitialPlayerResponse;
-      if (pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks) {
-        allTracks = pr.captions.playerCaptionsTracklistRenderer.captionTracks;
-        activeTrack = allTracks.find(t => t.languageCode === 'tr')
-                   || allTracks.find(t => t.languageCode === 'en')
-                   || allTracks[0];
-        if (activeTrack) prefetchCaptions(activeTrack);
+      const pr = getPlayerResponse();
+      const tracks = pr?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      if (Array.isArray(tracks) && tracks.length > 0) {
+        allTracks = tracks;
+        const nextTrack = getNativeCaptionTrack(allTracks, pr);
+        const nextTrackKey = nextTrack
+          ? `${nextTrack.languageCode || ''}|${nextTrack.vssId || ''}|${nextTrack.baseUrl || ''}`
+          : '';
+
+        if (nextTrack && nextTrackKey !== activeTrackKey) {
+          activeTrack = nextTrack;
+          activeTrackKey = nextTrackKey;
+          captionData = [];
+          prefetchCaptions(nextTrack);
+        }
         return;
       }
-    } catch(e) {}
+    } catch (e) {
+      console.warn('[VisionPiP] Unable to load YouTube caption tracks.', e);
+    }
 
     setTimeout(loadCaptionTracks, 2000);
   }
 
   async function prefetchCaptions(track) {
     try {
-      const url = track.baseUrl + '&fmt=json3';
+      if (!track?.baseUrl) throw new Error('Caption track URL is missing');
+      const separator = track.baseUrl.includes('?') ? '&' : '?';
+      const url = `${track.baseUrl}${separator}fmt=json3`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       const data = await resp.json();
+      if (track !== activeTrack) return;
       captionData = parseCaptionJSON3(data);
     } catch (e) {
-      captionData = [];
+      if (track === activeTrack) captionData = [];
     }
   }
 
@@ -467,32 +577,79 @@
   }
 
   // ── Mount Video into PiP Window ─────────────────────────────────────────
-  function attachVideoToPip(win, video, wrapper) {
-    isStreamMode = false;
+  function restoreMovedVideo(win) {
+    const movedVideo = win._movedVideo;
+    if (!movedVideo || !win._origParent) return;
 
+    if (win._origNext?.parentNode === win._origParent) {
+      win._origParent.insertBefore(movedVideo, win._origNext);
+    } else {
+      win._origParent.appendChild(movedVideo);
+    }
+
+    if (win._origStyle === null || win._origStyle === undefined) {
+      movedVideo.removeAttribute('style');
+    } else {
+      movedVideo.setAttribute('style', win._origStyle);
+    }
+
+    win._movedVideo = null;
+    win._origParent = null;
+    win._origNext = null;
+    win._origStyle = null;
+  }
+
+  function removePipStreamVideo(win) {
+    const pipVideo = win._pipVideo;
+    if (!pipVideo) return;
+
+    try {
+      pipVideo.pause();
+      pipVideo.srcObject = null;
+    } catch (e) {}
+    pipVideo.remove();
+    win._pipVideo = null;
+  }
+
+  function attachVideoToPip(win, video, wrapper) {
     try {
       const stream = video.captureStream?.();
       if (stream?.getVideoTracks().length > 0) {
-        let pv = win.document.querySelector('video');
-        if (!pv) {
-          pv = win.document.createElement('video');
-          pv.autoplay = true; pv.muted = true; pv.playsInline = true;
-          pv.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;';
-          wrapper.appendChild(pv);
+        // A node-moved video must be restored before switching to stream mode.
+        restoreMovedVideo(win);
+
+        let pipVideo = win._pipVideo;
+        if (!pipVideo) {
+          pipVideo = win.document.createElement('video');
+          pipVideo.autoplay = true;
+          pipVideo.muted = true;
+          pipVideo.playsInline = true;
+          pipVideo.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;';
+          wrapper.appendChild(pipVideo);
+          win._pipVideo = pipVideo;
         }
-        pv.srcObject = stream;
-        pv.playbackRate = video.playbackRate || 1;
+        pipVideo.srcObject = stream;
+        pipVideo.playbackRate = video.playbackRate || 1;
         isStreamMode = true;
         return;
       }
-    } catch(e) {}
+    } catch (e) {}
 
-    if (!isStreamMode) {
+    // If captureStream is unavailable, use the original video node while
+    // retaining enough metadata to restore the exact node and style on close.
+    removePipStreamVideo(win);
+    if (win._movedVideo && win._movedVideo !== video) restoreMovedVideo(win);
+
+    if (!win._movedVideo) {
       win._origParent = video.parentNode;
-      win._origNext   = video.nextSibling;
-      video.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#000;';
-      wrapper.appendChild(video);
+      win._origNext = video.nextSibling;
+      win._origStyle = video.getAttribute('style');
+      win._movedVideo = video;
     }
+
+    video.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;background:#000;';
+    wrapper.appendChild(video);
+    isStreamMode = false;
   }
 
   // ── Refresh Video Content in PiP When Switching Videos ────────────────────
@@ -525,9 +682,18 @@
   // ── Subtitle Synchronization (Smart Skip when Paused) ────────────────────
   function startSync(video, win) {
     let lastContent = '';
+    let lastVideoTime = -1;
+    let lastTrackCheck = 0;
+    let lastRevision = subtitleRevision;
 
     syncInterval = setInterval(() => {
       if (!pipSubEl) return;
+
+      if (lastRevision !== subtitleRevision) {
+        lastRevision = subtitleRevision;
+        lastContent = '';
+        pipSubEl.innerHTML = '';
+      }
 
       if (!subtitlesEnabled) {
         if (pipSubEl.innerHTML !== '') pipSubEl.innerHTML = '';
@@ -536,14 +702,26 @@
       }
 
       const currentVideo = getVideo() || video;
-
-      if (currentVideo.paused && lastContent !== '') {
-        return;
+      const now = Date.now();
+      if (now - lastTrackCheck >= 2000) {
+        lastTrackCheck = now;
+        loadCaptionTracks();
       }
 
-      const t   = currentVideo.currentTime;
+      const t = currentVideo.currentTime;
+      if (currentVideo.paused && lastContent !== '' && Math.abs(t - lastVideoTime) < 0.05) {
+        return;
+      }
       let lines = getBilingualKissCaptions();
 
+      // When KISS has no output because its target language is the same as
+      // YouTube's source/selected language, read the native caption layer.
+      if (lines.length === 0) {
+        lines = getNativeYouTubeCaptions();
+      }
+
+      // JSON3 is used as a reliable time-synchronized fallback when YouTube's
+      // own caption DOM is hidden or has not been painted yet.
       if (lines.length === 0 && captionData.length > 0) {
         const matches = captionData.filter(c => t >= c.start && t < c.end);
         const text = matches.map(c => c.text).join(' ').trim();
@@ -551,6 +729,7 @@
       }
 
       const currentContent = lines.join('|||');
+      lastVideoTime = t;
       if (currentContent === lastContent) return;
       lastContent = currentContent;
 
@@ -563,37 +742,84 @@
     }, 100);
   }
 
+  // ── Shared Caption Text Filter ──────────────────────────────────────────────
+  const captionUiAncestorSelector = [
+    '.ytp-settings-menu', '.ytp-panel-menu', '.ytp-popup',
+    '.ytp-menuitem', '.ytp-menuitem-label', '.ytp-contextmenu',
+    '.ytp-share-panel', '.ytp-watch-later-panel', '.ytp-caption-settings',
+    '[role="menu"]', '[role="menuitem"]', 'button', 'select',
+  ].join(',');
+
+  function normalizeCaptionText(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function isCaptionUiText(text) {
+    const normalized = normalizeCaptionText(text);
+    if (!normalized || /^\d+:\d+/.test(normalized)) return true;
+    if (/^\.+$|^…+$/.test(normalized)) return true;
+
+    // YouTube may render the currently selected caption language inside the
+    // same visible layer, for example: 中文（繁體） or Chinese (Traditional).
+    const languageLabelPattern = /^(?:中文|汉语|漢語|英文|英语|英語|日文|日本語|韓文|韩语|法文|法語|德文|德語|西班牙文|Chinese|English|Japanese|Korean|French|German|Spanish)(?:[（(][^（）()]{1,32}[）)])?$/i;
+    if (languageLabelPattern.test(normalized)) return true;
+
+    return [
+      /^(?:語言|语言|language)$/i,
+      /^(?:字幕|subtitles?|captions?)$/i,
+      /^(?:字幕設定|字幕设置|subtitle settings|caption settings)$/i,
+      /^(?:設定|设置|settings?)$/i,
+      /^(?:按一下|點擊|点击|click).*(?:進入|进入|設定|设置|settings?)/i,
+      /^(?:進入|进入|open|enter).*(?:設定|设置|settings?)/i,
+    ].some(pattern => pattern.test(normalized));
+  }
+
+  function getUsableCaptionText(element) {
+    const text = normalizeCaptionText(element?.textContent);
+    if (isCaptionUiText(text)) return '';
+    if (element?.closest?.(captionUiAncestorSelector)) return '';
+    if (element?.getAttribute?.('aria-hidden') === 'true') return '';
+    return text;
+  }
+
+  // ── Native YouTube Caption DOM Fallback ─────────────────────────────────────
+  function getNativeYouTubeCaptions() {
+    const player = document.querySelector('.html5-video-player, #movie_player');
+    if (!player) return [];
+
+    const leafNodes = player.querySelectorAll('.ytp-caption-segment');
+    const nodes = leafNodes.length > 0
+      ? leafNodes
+      : player.querySelectorAll(
+          '.ytp-caption-window-container .caption-visual-line,' +
+          '.ytp-caption-window-container .caption-line'
+        );
+
+    const lines = [];
+    for (const node of nodes) {
+      const text = getUsableCaptionText(node);
+      if (text && !lines.includes(text)) lines.push(text);
+    }
+    return lines;
+  }
+
   // ── [Optimized Extraction: High Performance DOM Query for KISS Translator] ──
   function getBilingualKissCaptions() {
     const player = document.querySelector('.html5-video-player, #movie_player');
     if (!player) return [];
 
-    const noiseKeywords = [
-      '雙語字幕載入成功', '暫無生詞', '自動生成', '自動產生',
-      '按一下', '進入設定', '字幕設定', '設定'
-    ];
-
-    const isValidText = (text) => {
-      if (!text || /^\d+:\d+/.test(text)) return false;
-      if (/^\.+$|^…+$/.test(text)) return false;
-      return !noiseKeywords.some(kw => text.includes(kw));
-    };
-
-    let pLines = [];
+    const pLines = [];
     const pNodes = player.querySelectorAll('p');
     for (let i = 0; i < pNodes.length; i++) {
       const el = pNodes[i];
-      const text = el.textContent.trim();
-      const isVisible = el.checkVisibility ? el.checkVisibility() : (el.offsetParent !== null || el.offsetWidth > 0);
-      if (isValidText(text) && isVisible) {
-        pLines.push(text);
-      }
+      const text = getUsableCaptionText(el);
+      const isVisible = el.checkVisibility
+        ? el.checkVisibility()
+        : (el.offsetParent !== null || el.offsetWidth > 0);
+      if (text && isVisible) pLines.push(text);
     }
 
-    pLines = [...new Set(pLines)];
-    if (pLines.length === 0) return [];
-
-    return pLines;
+    return [...new Set(pLines)];
   }
 
   // ── CSS ────────────────────────────────────────────────────────────────────
@@ -725,16 +951,8 @@
     clearInterval(controlsInterval); controlsInterval = null;
     pipSubEl = null;
 
-    if (!isStreamMode) {
-      const v = win.document?.querySelector('video');
-      if (v && win._origParent) {
-        if (win._origNext?.parentNode === win._origParent)
-          win._origParent.insertBefore(v, win._origNext);
-        else
-          win._origParent.appendChild(v);
-        v.style.cssText = '';
-      }
-    }
+    restoreMovedVideo(win);
+    removePipStreamVideo(win);
 
     pipWindow = null;
     cachedVideo = null;

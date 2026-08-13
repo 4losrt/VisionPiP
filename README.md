@@ -13,7 +13,7 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 ## ✨ Features
 
 - 🎬 **Document Picture-in-Picture API**: Renders full video, subtitles, and interactive controls in an independent floating window (Chrome 116+ required).
-- 🌐 **Real-time Bilingual Subtitle Support**: High-efficiency DOM extraction custom-tailored to work with [KISS Translator](https://github.com/fishjar/kiss-translator) to display dual-language subtitles live in PiP mode, with fallback for YouTube JSON3 caption tracks.
+- 🌐 **Real-time Bilingual Subtitle Support**: High-efficiency DOM extraction custom-tailored to work with [KISS Translator](https://github.com/fishjar/kiss-translator) to display dual-language subtitles live in PiP mode. When KISS produces no output because its target language is the same as YouTube's selected/native caption language, VisionPiP falls back to YouTube's native caption DOM and JSON3 caption track. If YouTube does not expose a selected track, the language preference is Traditional Chinese / Chinese first, followed by English.
 - ⌨️ **Keyboard Shortcuts & In-Window Hotkeys**:
   - `P` : Toggle PiP window on YouTube watch pages.
   - `Space` / `K` : Play / Pause video inside PiP.
@@ -26,6 +26,14 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 - 🎨 **Modern Dark Glassmorphism UI**: Sleek, flat-icon interface with customizable typography, text color, background opacity, and vertical subtitle placement.
 
 ---
+
+## 🔧 Runtime Stability Notes
+
+- YouTube SPA navigation clears the previous video's subtitle state before loading the new caption track, preventing stale subtitles from appearing after switching videos.
+- Seeking while paused refreshes the PiP subtitle immediately instead of waiting for playback to resume.
+- When the browser uses the native video-node fallback, VisionPiP restores the original video node and its exact inline style after PiP closes or switches video.
+- Stream-backed PiP video elements are explicitly detached and cleaned up when the PiP window closes.
+- Both KISS and native YouTube caption extraction ignore YouTube/KISS language menus, settings panels, buttons, prompts such as “按一下進去設定”, and current-language labels such as “中文（繁體）” so they are not rendered as subtitle lines.
 
 ## 🚀 Installation
 
@@ -42,7 +50,7 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 1. **Open PiP Mode**:
    - Hover over the video player and click the **Open VisionPiP (P)** floating button in the top-left corner, or press `P` on your keyboard.
 2. **Bilingual Subtitles with KISS Translator**:
-   - Install and enable [KISS Translator](https://github.com/fishjar/kiss-translator) on YouTube. VisionPiP automatically captures and renders the translated bilingual subtitles in real-time inside the PiP overlay.
+   - Install and enable [KISS Translator](https://github.com/fishjar/kiss-translator) on YouTube. VisionPiP automatically captures and renders translated bilingual subtitles in real time inside the PiP overlay. If KISS is configured to the same language as the YouTube caption, VisionPiP automatically displays the original YouTube caption instead.
 3. **Customize Subtitle Appearance**:
    - Click the extension icon in your Chrome toolbar to open the settings popup.
    - Adjust font size, font family, text color, background opacity, and position (Top / Bottom). Settings are synced instantly via `chrome.storage.sync`.
@@ -68,7 +76,7 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 
 ## 🙏 Acknowledgments & Attribution
 
-- Built and refined with assistance from **Gemini**.
+- Built and refined with assistance from **Gemini**, with additional refinement by **Manus AI**.
 - Designed to work seamlessly with [KISS Translator](https://github.com/fishjar/kiss-translator) for bilingual subtitle rendering.
 - Inspired by and adapted from [mehmetkahya0/youtube-pip-subtitles](https://github.com/mehmetkahya0/youtube-pip-subtitles). Special thanks to the original author for the foundational concept.
 
