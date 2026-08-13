@@ -78,7 +78,7 @@ VisionPiP is a modern Chrome extension (Manifest V3) that leverages Chrome's **D
 
 ## 🙏 Acknowledgments & Attribution
 
-- Built and refined with assistance from **Gemini**, with additional refinement by **Manus AI**.
+- This project was completed collaboratively by **Gemini** and **Manus AI**, covering the extension architecture, subtitle fallback, UI-text filtering, runtime stability, and documentation.
 - Designed to work seamlessly with [KISS Translator](https://github.com/fishjar/kiss-translator) for bilingual subtitle rendering.
 - Inspired by and adapted from [mehmetkahya0/youtube-pip-subtitles](https://github.com/mehmetkahya0/youtube-pip-subtitles). Special thanks to the original author for the foundational concept.
 

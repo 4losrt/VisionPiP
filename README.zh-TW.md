@@ -172,7 +172,7 @@ VisionPiP/
 
 ## 致謝與來源
 
-- 本專案在 **Gemini** 協助下建立與改良，並由 **Manus AI** 進行額外功能修正、字幕 fallback、過濾邏輯與穩定性改善。
+- 本專案由 **Gemini** 與 **Manus AI** 協作完成，包含擴充功能架構、字幕 fallback、介面文字過濾、執行期穩定性與文件整理。
 - 感謝 [KISS Translator](https://github.com/fishjar/kiss-translator) 提供雙語字幕整合基礎。
 - 本專案的 PiP 字幕概念受到 [mehmetkahya0/youtube-pip-subtitles](https://github.com/mehmetkahya0/youtube-pip-subtitles) 啟發與參考，並保留原始作者的開源 attribution。
 
