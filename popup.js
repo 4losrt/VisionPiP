@@ -9,32 +9,38 @@ const defaults = {
   textColor: '#ffffff',
   bgOpacity: 75,
   position: 'bottom',
+  subtitleMode: 'bilingual',
+  fitMode: 'contain',
 };
 
 // Elements
-const fontSizeInput   = document.getElementById('font-size');
-const fontSizeVal     = document.getElementById('font-size-val');
-const fontFamilyInput = document.getElementById('font-family');
-const textColorInput  = document.getElementById('text-color');
-const bgOpacityInput  = document.getElementById('bg-opacity');
-const bgOpacityVal    = document.getElementById('bg-opacity-val');
-const previewText     = document.getElementById('preview-text');
-const saveIndicator   = document.getElementById('save-indicator');
-const resetBtn        = document.getElementById('reset-btn');
-const statusDot       = document.getElementById('status-dot');
-const statusText      = document.getElementById('status-text');
-const posButtons      = document.querySelectorAll('.toggle-btn[data-pos]');
-const pipToggle       = document.getElementById('pip-toggle');
+const fontSizeInput     = document.getElementById('font-size');
+const fontSizeVal       = document.getElementById('font-size-val');
+const fontFamilyInput   = document.getElementById('font-family');
+const subtitleModeInput = document.getElementById('subtitle-mode');
+const fitModeInput      = document.getElementById('fit-mode');
+const textColorInput    = document.getElementById('text-color');
+const bgOpacityInput    = document.getElementById('bg-opacity');
+const bgOpacityVal      = document.getElementById('bg-opacity-val');
+const previewText       = document.getElementById('preview-text');
+const saveIndicator     = document.getElementById('save-indicator');
+const resetBtn          = document.getElementById('reset-btn');
+const statusDot         = document.getElementById('status-dot');
+const statusText        = document.getElementById('status-text');
+const posButtons        = document.querySelectorAll('.toggle-btn[data-pos]');
+const pipToggle         = document.getElementById('pip-toggle');
 
 let saveTimer = null;
 
 // ─── Load ────────────────────────────────────────────────────────────────────
 chrome.storage.sync.get(defaults, (saved) => {
-  fontSizeInput.value    = saved.fontSize;
-  fontSizeVal.textContent = saved.fontSize + 'px';
-  fontFamilyInput.value = saved.fontFamily;
-  textColorInput.value  = saved.textColor;
-  bgOpacityInput.value  = saved.bgOpacity;
+  fontSizeInput.value      = saved.fontSize;
+  fontSizeVal.textContent  = saved.fontSize + 'px';
+  fontFamilyInput.value   = saved.fontFamily;
+  if (subtitleModeInput) subtitleModeInput.value = saved.subtitleMode || defaults.subtitleMode;
+  if (fitModeInput)      fitModeInput.value      = saved.fitMode || defaults.fitMode;
+  textColorInput.value    = saved.textColor;
+  bgOpacityInput.value    = saved.bgOpacity;
   bgOpacityVal.textContent = saved.bgOpacity + '%';
   setActivePosition(saved.position);
   updatePreview(saved);
@@ -47,6 +53,8 @@ fontSizeInput.addEventListener('input', () => {
 });
 
 fontFamilyInput.addEventListener('change', saveAndPreview);
+subtitleModeInput?.addEventListener('change', saveAndPreview);
+fitModeInput?.addEventListener('change', saveAndPreview);
 textColorInput.addEventListener('input', saveAndPreview);
 
 bgOpacityInput.addEventListener('input', () => {
@@ -65,6 +73,8 @@ resetBtn.addEventListener('click', () => {
   fontSizeInput.value     = defaults.fontSize;
   fontSizeVal.textContent = defaults.fontSize + 'px';
   fontFamilyInput.value   = defaults.fontFamily;
+  if (subtitleModeInput) subtitleModeInput.value = defaults.subtitleMode;
+  if (fitModeInput)      fitModeInput.value      = defaults.fitMode;
   textColorInput.value    = defaults.textColor;
   bgOpacityInput.value    = defaults.bgOpacity;
   bgOpacityVal.textContent = defaults.bgOpacity + '%';
@@ -104,18 +114,31 @@ function saveAndPreview() {
 function getCurrentSettings() {
   const activePos = document.querySelector('.toggle-btn.active');
   return {
-    fontSize:   parseInt(fontSizeInput.value),
-    fontFamily: fontFamilyInput.value,
-    textColor:  textColorInput.value,
-    bgOpacity:  parseInt(bgOpacityInput.value),
-    position:   activePos ? activePos.dataset.pos : 'bottom',
+    fontSize:     parseInt(fontSizeInput.value),
+    fontFamily:   fontFamilyInput.value,
+    subtitleMode: subtitleModeInput ? subtitleModeInput.value : 'bilingual',
+    fitMode:      fitModeInput ? fitModeInput.value : 'contain',
+    textColor:    textColorInput.value,
+    bgOpacity:    parseInt(bgOpacityInput.value),
+    position:     activePos ? activePos.dataset.pos : 'bottom',
   };
+}
+
+function formatFontFamily(font) {
+  if (!font) return '"Trebuchet MS", sans-serif';
+  if (font === 'system-ui') return 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const parts = font.split(',').map(f => f.trim()).filter(Boolean);
+  const formatted = parts.map(f => {
+    if (f.startsWith('"') || f.startsWith("'") || !f.includes(' ')) return f;
+    return `"${f}"`;
+  });
+  return `${formatted.join(', ')}, sans-serif`;
 }
 
 function updatePreview(s) {
   const opacity = ((s.bgOpacity ?? 75) / 100).toFixed(2);
   previewText.style.fontSize   = (s.fontSize || 16) + 'px';
-  previewText.style.fontFamily = `"${s.fontFamily || 'Trebuchet MS'}", sans-serif`;
+  previewText.style.fontFamily = formatFontFamily(s.fontFamily);
   previewText.style.color      = s.textColor || '#ffffff';
   previewText.style.background = `rgba(0,0,0,${opacity})`;
 }
@@ -135,7 +158,7 @@ function flashSaved() {
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
   if (!tabs[0]) return;
   const url = tabs[0].url || '';
-  if (url.includes('youtube.com/watch')) {
+  if (url.includes('youtube.com/watch') || url.includes('youtube.com/shorts/')) {
     statusDot.classList.add('active');
     statusText.textContent = 'Active on YouTube';
 

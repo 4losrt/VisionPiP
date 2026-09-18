@@ -1,0 +1,13 @@
+{
+  "name": "visionpip-tests",
+  "private": true,
+  "scripts": {
+    "check": "node --check content.js && node --check popup.js && node --check player-bridge.js && node --check player-bridge.test.cjs && node --check subtitle-sync.test.cjs && python3 -c \"import ast,pathlib; [ast.parse(pathlib.Path(p).read_text()) for p in ('browser_smoke.py', 'interactive_test.py', 'test_real_youtube.py')]\"",
+    "test": "npm run check && npm run test:unit && npm run test:browser",
+    "test:unit": "node --test player-bridge.test.cjs subtitle-sync.test.cjs",
+    "test:browser": "if [ -f .venv/bin/python ]; then .venv/bin/python browser_smoke.py --headless; else python3 browser_smoke.py --headless; fi",
+    "test:browser:headed": "if [ -f .venv/bin/python ]; then .venv/bin/python browser_smoke.py; else python3 browser_smoke.py; fi",
+    "test:interactive": "if [ -f .venv/bin/python ]; then .venv/bin/python interactive_test.py; else python3 interactive_test.py; fi",
+    "test:live": "if [ -f .venv/bin/python ]; then .venv/bin/python test_real_youtube.py; else python3 test_real_youtube.py; fi"
+  }
+}

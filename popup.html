@@ -406,12 +406,37 @@
     <div class="control">
       <div class="control-label"><span>Font Family</span></div>
       <select id="font-family">
+        <option value="system-ui">系統預設 (System UI)</option>
+        <option value="PingFang TC, Microsoft JhengHei">蘋方 / 微軟正黑體 (Modern CJK)</option>
+        <option value="Noto Sans TC, Noto Sans SC">思源黑體 (Noto Sans)</option>
         <option value="Trebuchet MS">Trebuchet MS (Default)</option>
         <option value="Arial">Arial</option>
-        <option value="Georgia">Georgia (Serif)</option>
+        <option value="Georgia, Songti TC">Georgia / 宋體 (Serif)</option>
         <option value="Verdana">Verdana</option>
         <option value="Courier New">Courier New (Mono)</option>
         <option value="Impact">Impact (Bold)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Modes -->
+  <div class="section">
+    <div class="section-title">Display Modes</div>
+
+    <div class="control">
+      <div class="control-label"><span>Subtitle Mode</span></div>
+      <select id="subtitle-mode">
+        <option value="bilingual">雙語對照 (Bilingual)</option>
+        <option value="original">僅原文 (Original Only)</option>
+        <option value="translation">僅譯文 (Translation Only)</option>
+      </select>
+    </div>
+
+    <div class="control">
+      <div class="control-label"><span>Video Aspect Mode</span></div>
+      <select id="fit-mode">
+        <option value="contain">等比例完整畫面 (Contain)</option>
+        <option value="cover">滿版沉浸無黑邊 (Cover)</option>
       </select>
     </div>
   </div>
